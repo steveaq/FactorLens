@@ -1,5 +1,7 @@
 # FactorLens
 
+[Open the live Streamlit app](https://c2umdutfhvj2uw9gyb9x8c.streamlit.app/)
+
 ![Application preview](docs/preview.png)
 
 FactorLens examines monthly returns for ten US industry portfolios. It fits factor
