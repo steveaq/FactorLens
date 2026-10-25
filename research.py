@@ -168,9 +168,9 @@ def research_note(frame, industry, model, fitted, metrics, validation=None):
     note = f'''# FactorLens research note
 
 Portfolio: {INDUSTRIES[industry]} ({industry}); value weighted, monthly total returns.
-Window: {frame.index[0]:%b %Y} – {frame.index[-1]:%b %Y}; {len(frame)} observations.
+Window: {frame.index[0]:%b %Y} to {frame.index[-1]:%b %Y}; {len(frame)} observations.
 Model: {model}. Dependent variable: industry return minus the monthly risk-free return.
-Inference: OLS with Newey–West / HAC standard errors, 3 lags; 95% confidence intervals.
+Inference: OLS with Newey-West / HAC standard errors, 3 lags; 95% confidence intervals.
 
 Annualised intercept (linear, 12 × monthly): {fitted.params['const']*12:.2%}
 Adjusted R²: {fitted.rsquared_adj:.3f}

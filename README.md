@@ -2,13 +2,13 @@
 
 ![Application preview](docs/preview.png)
 
-An interactive factor-research desk built with Streamlit. Explore what explains
-monthly returns across ten US industry portfolios, with uncertainty and model
-limitations visible alongside the charts.
+FactorLens examines monthly returns for ten US industry portfolios. It fits factor
+models, reports uncertainty, and checks whether the fitted relationships hold up
+outside the estimation period.
 
-## Run
+## Run locally
 
-Python 3.11 recommended.
+Python 3.11 is the tested runtime.
 
 ```bash
 python -m venv .venv
@@ -17,61 +17,77 @@ python -m pip install -r requirements.txt
 python -m streamlit run app.py
 ```
 
-The app opens immediately from a committed real-data snapshot. No keys, accounts,
-or network calls are required on startup. **Data & method → Refresh** explicitly
-downloads the official archives, validates both, and publishes an atomic local
-bundle. A failed refresh preserves the existing dataset. The local live bundle is
-Git-ignored; the committed snapshot is the deployment fallback.
+The bundled French Data Library snapshot opens without a network connection or
+API key. Industry, model and date filters stay available in the sidebar as you
+move between pages.
 
-## Research workflow
+## Pages
 
-- Choose an industry, calendar-year window and five-, three-, or one-factor model.
-- Inspect growth of $100, drawdowns, volatility and excess-return Sharpe.
-- Read factor slopes with 95% HAC confidence intervals and trailing exposures.
-- Compare all ten industries on a factor heatmap.
-- Freeze coefficients before a chronological holdout and compare attribution
-  error against a market-only model fitted on the same training months.
-- Download the research note and exact monthly observations used in the analysis.
+- **Overview:** growth of $100, annual returns, drawdowns and an interpretation of
+  the fitted intercept and its confidence interval.
+- **Factor exposures:** slopes with HAC intervals, trailing exposures, monthly
+  attribution, and a comparison of all ten industries.
+- **Risk and returns:** empirical monthly VaR and expected shortfall, return
+  distributions, calendar heatmap, rolling volatility/Sharpe, drawdown recovery
+  episodes, and industry correlations.
+- **Model diagnostics:** residual plots, autocorrelation, normal Q-Q plot, VIF,
+  factor correlations, Ljung-Box, Breusch-Pagan and Jarque-Bera tests.
+- **Validation:** a fixed chronological holdout and rolling or expanding
+  walk-forward refits. Specifications are compared on identical test months.
+- **Data and methodology:** source definitions, equations, provenance, refresh,
+  monthly observations and a downloadable research note.
 
-## Method and source
+These are separate Streamlit pages with their own URLs. Only the selected page
+runs; expensive rolling calculations are cached.
 
-[Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html):
-US five research factors and the **value-weighted monthly** block of the ten
-industry portfolios. The snapshot starts in January 1990; provenance, retrieval
-date and source archive hashes live in `data/snapshot.json`. Data is converted
-from percent to decimal returns once, aligned by month, and checked for gaps.
-Annual blocks, equal-weighted blocks and missing-data sentinels are excluded.
+## Calculation notes
 
-OLS fits industry return minus RF against an intercept and selected factors.
-Confidence intervals use Newey–West/HAC standard errors with three lags.
-Annualised alpha is **12 × the monthly intercept**, not compounded return or CAGR.
-US market total return is Mkt−RF + RF. Maximum drawdown includes the starting
-capital, so a loss in the first month is counted.
+The source is the [Kenneth R. French Data Library](https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/data_library.html).
+The app uses US factors and the first, value-weighted monthly block of the ten
+industry portfolios. Snapshot metadata records retrieval time and source archive
+hashes. Percentages become decimal returns once, missing-data sentinels are removed,
+and the combined monthly series is checked for gaps.
 
-The holdout evaluates **explanatory stability**, using realised contemporaneous
-factor returns. Those inputs are not known ahead of time; this is not a tradable
-forecast or a simulated trading strategy. Research portfolios are not directly
-investable, costs are not modelled, and historical data may be revised. The
-dashboard is an analytical research tool, not a portfolio allocation service.
+OLS fits industry returns less RF against an intercept and the selected factors.
+Intervals use Newey-West/HAC standard errors with three lags. Alpha is 12 times the
+monthly intercept. CAGR compounds total returns; the two quantities are different.
+The market total return is Mkt-RF plus RF. Drawdowns include starting capital, and
+recovery tables retain unrecovered episodes.
 
-## Verify
+Monthly loss is minus monthly return. Historical VaR is the chosen empirical loss
+quantile; expected shortfall averages losses at or above it. Tail estimates depend
+strongly on the period and number of observations. No normality assumption is used
+for these estimates.
+
+The attribution components add to each observed monthly excess return. The
+full-sample decomposition uses coefficients fitted on that same sample.
+Chronological validation and walk-forward fits use only earlier returns to estimate
+coefficients, then use the **realised factors of the test month** to explain its
+return. This evaluates attribution stability, not a tradable forecast. The page
+reports training end dates so this distinction can be checked.
+
+Diagnostic tests have their own assumptions and can produce false positives when
+several are inspected. HAC covariance does not repair a misspecified model.
+Research portfolios are not directly investable, costs are not included, and source
+history can be revised.
+
+## Refresh and verification
+
+On Data and methodology, Refresh downloads and validates both official source
+archives before replacing one local bundle atomically. A failed refresh keeps the
+previous dataset. The live bundle is ignored by Git and may disappear on a host
+restart; the committed snapshot remains available.
 
 ```bash
 python -m unittest test_research.py
 ```
 
-Tests cover archive block parsing and units, recovery of known coefficients,
-holdout isolation, the first-month drawdown edge case, total-market return
-construction, snapshot completeness, and Streamlit launch/control changes.
-GitHub Actions installs the declared dependencies and runs these checks.
+The suite checks parsing and units, known coefficients, holdout and walk-forward
+isolation, initial drawdown/recovery, attribution reconstruction, empirical tail
+losses, VIF sensitivity, snapshot completeness and all six pages. GitHub Actions
+runs the same suite after a fresh dependency install.
 
-## Deploy
-
-In Streamlit Community Cloud, select this repository, branch `main`, and `app.py`.
-Use Python 3.11. No secrets are required. Snapshot refreshes are local to the host
-and may be lost when the service restarts. Community Cloud can hibernate after
-inactivity; the optional `render.yaml` describes a paid always-on service.
-Committing that configuration alone does not provision anything.
-
-Design sources and acceptance criteria are in `DESIGN.md`. Public source datasets
-retain their upstream terms and attribution; the code is MIT-licensed.
+For Streamlit Community Cloud, select `main`, `app.py`, and Python 3.11. No secrets
+are needed. `render.yaml` is an optional paid always-on configuration; committing
+it does not create a service. Code is MIT-licensed; public data retains its
+upstream attribution and terms.

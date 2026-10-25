@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 from research import FACTORS, parse_monthly, fit_model, holdout_test, performance, growth, load_data
+from analytics import risk_summary, drawdown_periods, factor_contributions, walk_forward, regression_diagnostics
 
 
 def synthetic():
@@ -63,7 +64,45 @@ class ResearchTests(unittest.TestCase):
         app.selectbox[0].select('Enrgy').run()
         app.selectbox[1].select('Market only').run()
         self.assertFalse(app.exception)
-        self.assertTrue(any('Annualised' in m.label for m in app.metric) or len(app.tabs)==4)
+        self.assertTrue(any('Annualised' in m.label for m in app.metric))
+
+    def test_historical_tail_loss_convention(self):
+        result=risk_summary(pd.Series([-.12,-.08,-.04]+[.01]*9),.95)
+        self.assertAlmostEqual(result['var'],.098)
+        self.assertAlmostEqual(result['expected_shortfall'],.12)
+        self.assertEqual(result['tail_months'],1)
+
+    def test_drawdown_recovery_episodes_include_initial_capital(self):
+        returns=pd.Series([-.1,1/9,-.2,.25],index=pd.period_range('2020-01',periods=4,freq='M').to_timestamp('M'))
+        episodes=drawdown_periods(returns)
+        self.assertEqual(len(episodes),2)
+        np.testing.assert_allclose(sorted(episodes.Depth),[-.2,-.1])
+        self.assertFalse(episodes.Recovery.isna().any())
+
+    def test_attribution_reconstructs_observed_excess_return(self):
+        frame=synthetic();fitted=fit_model(frame,'HiTec',FACTORS)
+        parts=factor_contributions(frame,'HiTec',fitted,FACTORS)
+        np.testing.assert_allclose(parts.sum(axis=1),frame.HiTec-frame.RF,atol=1e-12)
+
+    def test_walk_forward_uses_only_prior_returns_for_each_fit(self):
+        frame=synthetic();original=walk_forward(frame,'HiTec',FACTORS,60)
+        changed=frame.copy();changed.loc[changed.index[60]:,'HiTec']+=.1
+        altered=walk_forward(changed,'HiTec',FACTORS,60)
+        self.assertAlmostEqual(original.estimate.iloc[0],altered.estimate.iloc[0])
+        self.assertTrue((original.train_end<original.index).all())
+
+    def test_diagnostic_vif_detects_overlapping_factors(self):
+        frame=synthetic();frame['SMB']=frame['Mkt-RF']+.001*frame['SMB']
+        fitted=fit_model(frame,'HiTec',FACTORS)
+        diagnostic=regression_diagnostics(fitted,frame,FACTORS)
+        self.assertGreater(diagnostic['vif'].set_index('Factor').loc['SMB','VIF'],100)
+        self.assertEqual(len(diagnostic['tests']),3)
+
+    def test_all_research_pages_render(self):
+        app=AppTest.from_file('app.py',default_timeout=60).run()
+        for name in ['exposures','risk','diagnostics','validation','methodology']:
+            app.switch_page('views/'+name+'.py').run()
+            self.assertFalse(app.exception,name)
 
 
 if __name__=='__main__': unittest.main()
