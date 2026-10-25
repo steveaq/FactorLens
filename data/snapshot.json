@@ -1,0 +1,20 @@
+{
+  "retrieved_at": "2026-10-25T17:40:40.400732+00:00",
+  "sources": [
+    {
+      "file": "F-F_Research_Data_5_Factors_2x3_CSV.zip",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/F-F_Research_Data_5_Factors_2x3_CSV.zip",
+      "sha256": "36756c5c2559648519ac4b22913d860c6afd865cfebce920e3e8927f8e2d10b7"
+    },
+    {
+      "file": "10_Industry_Portfolios_CSV.zip",
+      "url": "https://mba.tuck.dartmouth.edu/pages/faculty/ken.french/ftp/10_Industry_Portfolios_CSV.zip",
+      "sha256": "ebd937a4b995d821867aeb956a96f09a666386f38fa82516b7d1767ee4a49ae5"
+    }
+  ],
+  "first_month": "1990-01-31",
+  "last_month": "2026-08-31",
+  "rows": 440,
+  "units": "decimal monthly returns",
+  "weighting": "value-weighted industry portfolios"
+}
